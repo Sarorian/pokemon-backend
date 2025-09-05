@@ -1,11 +1,11 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import itemRoutes from "./routes/itemRoutes.js"; // updated import
-import "dotenv/config";
+import itemRoutes from "./routes/itemRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import otherRoutes from "./routes/otherRoutes.js";
 import exportRoutes from "./routes/export.js";
+import "dotenv/config";
 
 const app = express();
 
@@ -20,15 +20,15 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error(err));
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Routes
-app.use("/api/items", itemRoutes); // updated route path
+app.use("/api/items", itemRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/other", otherRoutes);
 app.use("/api/export", exportRoutes);
 
-// Start server
-app.listen(5000, () =>
-  console.log("🚀 Server running on http://localhost:5000")
-);
+// Dynamic port for Heroku, fallback to 5000
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
