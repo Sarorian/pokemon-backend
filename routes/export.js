@@ -19,14 +19,14 @@ router.get("/transactions", async (req, res) => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // include full end day
+    end.setHours(23, 59, 59, 999);
 
-    const items = await Item.find({
+    // 1. Sales (sold items)
+    const soldItems = await Item.find({
       soldDate: { $gte: start, $lte: end },
     }).lean();
 
-    // Add profit calculation
-    const itemsWithProfit = items.map((item) => ({
+    const soldWithProfit = soldItems.map((item) => ({
       ...item,
       purchaseDate: item.purchaseDate
         ? new Date(item.purchaseDate).toISOString().split("T")[0]
@@ -35,9 +35,36 @@ router.get("/transactions", async (req, res) => {
         ? new Date(item.soldDate).toISOString().split("T")[0]
         : "",
       profit: +((item.soldPrice || 0) - (item.purchasePrice || 0)).toFixed(2),
+      transactionType: "sale",
     }));
 
-    // Define CSV headers
+    // 2. Purchases (items bought in range, regardless of soldDate)
+    const purchasedItems = await Item.find({
+      purchaseDate: { $gte: start, $lte: end },
+    }).lean();
+
+    const purchasesAsTransactions = purchasedItems.map((item) => ({
+      ...item,
+      purchaseDate: item.purchaseDate
+        ? new Date(item.purchaseDate).toISOString().split("T")[0]
+        : "",
+      soldDate: item.soldDate
+        ? new Date(item.soldDate).toISOString().split("T")[0]
+        : "",
+      // Show purchase as a negative outflow
+      profit: -(item.purchasePrice || 0),
+      soldPrice: "",
+      transactionType: "purchase",
+    }));
+
+    // 3. Combine and sort
+    const combined = [...soldWithProfit, ...purchasesAsTransactions].sort(
+      (a, b) =>
+        new Date(a.soldDate || a.purchaseDate) -
+        new Date(b.soldDate || b.purchaseDate)
+    );
+
+    // 4. CSV headers
     const columns = [
       "name",
       "purchasePrice",
@@ -48,9 +75,9 @@ router.get("/transactions", async (req, res) => {
       "notes",
       "itemType",
       "profit",
+      "transactionType",
     ];
 
-    // Safe filenames for headers (no illegal characters)
     const safeStart = start.toISOString().split("T")[0];
     const safeEnd = end.toISOString().split("T")[0];
 
@@ -61,84 +88,12 @@ router.get("/transactions", async (req, res) => {
     );
 
     const stringifier = stringify({ header: true, columns });
-    itemsWithProfit.forEach((item) => stringifier.write(item));
+    combined.forEach((row) => stringifier.write(row));
     stringifier.end();
     stringifier.pipe(res);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to export transactions" });
-  }
-});
-
-// Expenses route
-router.get("/expenses", async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    if (!startDate || !endDate)
-      return res.status(400).json({ error: "startDate and endDate required" });
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    const expenses = await Expense.find({
-      date: { $gte: start, $lte: end },
-    }).lean();
-    const data = expenses.map((e) => ({
-      ...e,
-      date: e.date ? e.date.toISOString().split("T")[0] : "",
-    }));
-
-    const columns = ["name", "category", "amount", "date", "notes"];
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="expenses_${startDate}_to_${endDate}.csv"`
-    );
-
-    const stringifier = stringify({ header: true, columns });
-    data.forEach((row) => stringifier.write(row));
-    stringifier.end();
-    stringifier.pipe(res);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to export expenses" });
-  }
-});
-
-// Other route
-router.get("/other", async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    if (!startDate || !endDate)
-      return res.status(400).json({ error: "startDate and endDate required" });
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    const entries = await Other.find({
-      date: { $gte: start, $lte: end },
-    }).lean();
-    const data = entries.map((e) => ({
-      ...e,
-      date: e.date ? e.date.toISOString().split("T")[0] : "",
-    }));
-
-    const columns = ["name", "amount", "date", "notes"];
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="other_${startDate}_to_${endDate}.csv"`
-    );
-
-    const stringifier = stringify({ header: true, columns });
-    data.forEach((row) => stringifier.write(row));
-    stringifier.end();
-    stringifier.pipe(res);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to export other profits" });
   }
 });
 
