@@ -2,7 +2,7 @@
   "name": "o2-cards-backend",
   "type": "module",
   "dependencies": {
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "csv-stringify": "^6.6.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
