@@ -13,6 +13,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: "https://sarorian.github.io",
+    methods: ["GET", "POST", "PUT", "DELETE"],
   }),
 );
 
