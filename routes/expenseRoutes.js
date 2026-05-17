@@ -17,9 +17,13 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const expense = new Expense(req.body);
-    const savedExpense = await expense.save();
-    res.status(201).json(savedExpense);
+    const saved = await expense.save();
+    res.status(201).json(saved);
   } catch (err) {
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(", ") });
+    }
     res.status(400).json({ error: err.message });
   }
 });
@@ -27,12 +31,12 @@ router.post("/", async (req, res) => {
 // PUT update expense
 router.put("/:id", async (req, res) => {
   try {
-    const updatedExpense = await Expense.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    res.json(updatedExpense);
+    const updated = await Expense.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) return res.status(404).json({ error: "Expense not found" });
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -41,7 +45,8 @@ router.put("/:id", async (req, res) => {
 // DELETE expense
 router.delete("/:id", async (req, res) => {
   try {
-    await Expense.findByIdAndDelete(req.params.id);
+    const deleted = await Expense.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Expense not found" });
     res.json({ message: "Expense deleted" });
   } catch (err) {
     res.status(400).json({ error: err.message });

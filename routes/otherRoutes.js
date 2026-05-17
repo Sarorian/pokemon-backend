@@ -17,8 +17,26 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const other = new Other(req.body);
-    const savedOther = await other.save();
-    res.status(201).json(savedOther);
+    const saved = await other.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join(", ") });
+    }
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PUT update other profit entry
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await Other.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) return res.status(404).json({ error: "Entry not found" });
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -27,7 +45,8 @@ router.post("/", async (req, res) => {
 // DELETE an entry
 router.delete("/:id", async (req, res) => {
   try {
-    await Other.findByIdAndDelete(req.params.id);
+    const deleted = await Other.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Entry not found" });
     res.json({ message: "Entry deleted" });
   } catch (err) {
     res.status(400).json({ error: err.message });

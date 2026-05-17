@@ -4,43 +4,36 @@ import "dotenv/config";
 
 const normalizeDates = async () => {
   await mongoose
-    .connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
+    .connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB connected"))
     .catch((err) => console.error(err));
 
   const items = await Item.find({});
 
   for (const item of items) {
-    let updated = false;
-
     const fixDate = (dateField) => {
       if (!dateField) return null;
-
-      let date = new Date(dateField);
-
-      if (isNaN(date.getTime())) return null; // invalid date
-
+      const date = new Date(dateField);
+      if (isNaN(date.getTime())) return null;
       if (date.getFullYear() < 100) {
         date.setFullYear(date.getFullYear() + 2000);
         return date;
       }
-
-      return date; // already correct
+      return date;
     };
 
     const newPurchaseDate = fixDate(item.purchaseDate);
     const newSoldDate = fixDate(item.soldDate);
 
-    if (
-      (newPurchaseDate &&
-        newPurchaseDate.getTime() !== item.purchaseDate?.getTime()) ||
-      (newSoldDate && newSoldDate.getTime() !== item.soldDate?.getTime())
-    ) {
-      item.purchaseDate = newPurchaseDate || item.purchaseDate;
-      item.soldDate = newSoldDate || item.soldDate;
+    const purchaseChanged =
+      newPurchaseDate &&
+      newPurchaseDate.getTime() !== item.purchaseDate?.getTime();
+    const soldChanged =
+      newSoldDate && newSoldDate.getTime() !== item.soldDate?.getTime();
+
+    if (purchaseChanged || soldChanged) {
+      if (purchaseChanged) item.purchaseDate = newPurchaseDate;
+      if (soldChanged) item.soldDate = newSoldDate;
       await item.save();
       console.log(`Updated item: ${item.name}`);
     }

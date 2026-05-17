@@ -5,65 +5,57 @@ const options = { discriminatorKey: "itemType", timestamps: true };
 // Base Item Schema
 const ItemSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
     purchasePrice: { type: Number, required: true },
-    purchaseDate: { type: Date, required: true },
+    purchaseDate: { type: Date, default: null },
     soldPrice: { type: Number, default: null },
     soldDate: { type: Date, default: null },
-    notes: { type: String, default: "" },
+    notes: { type: String, default: "", trim: true },
     owner: {
       type: String,
-      enum: ["Owen", "Ben", "Joint"], // restrict to these values
+      enum: ["Owen", "Ben", "Joint"],
       required: true,
-      default: "Joint", // or pick what makes sense
+      default: "Joint",
     },
   },
-  options
+  options,
 );
 
 const Item = mongoose.model("Item", ItemSchema);
-
-// --- Discriminators ---
 
 // Card
 const Card = Item.discriminator(
   "Card",
   new mongoose.Schema(
     {
-      set: { type: String, required: true },
-      number: { type: String, required: true },
+      set: { type: String, required: true, trim: true },
+      number: { type: String, required: true, trim: true },
       condition: {
         type: String,
         enum: ["NM", "LP", "MP", "HP", "D"],
         required: true,
       },
     },
-    options
-  )
+    options,
+  ),
 );
 
-// Slab
+// Slab — company is a free-text field (uppercased before save), not an enum,
+// so PSA, BGS, CGC, TAG, SGC, etc. all work without schema changes.
 const Slab = Item.discriminator(
   "Slab",
   new mongoose.Schema(
     {
-      number: { type: String, required: true },
-      set: { type: String, required: true },
-      company: {
-        type: String,
-        enum: ["PSA", "BGS", "CGC", "TAG", "Other"],
-        required: true,
-      },
-      grade: { type: String, required: true },
+      number: { type: String, required: true, trim: true },
+      set: { type: String, required: true, trim: true },
+      company: { type: String, required: true, trim: true },
+      grade: { type: String, required: true, trim: true },
     },
-    options
-  )
+    options,
+  ),
 );
 
-// Sealed
-const Sealed = Item.discriminator(
-  "Sealed",
-  new mongoose.Schema({}, options) // no extra fields beyond base
-);
+// Sealed — no extra fields beyond base
+const Sealed = Item.discriminator("Sealed", new mongoose.Schema({}, options));
 
 export { Item, Card, Slab, Sealed };

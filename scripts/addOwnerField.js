@@ -1,24 +1,19 @@
 import mongoose from "mongoose";
-import { Item } from "../models/Item.js"; // <-- named import
+import { Item } from "../models/Item.js";
 import "dotenv/config";
 
-// connect to your database
 await mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error(err));
 
 async function addOwnerField() {
   try {
-    // Update all items that don't have "owner"
+    // Update all items that don't have "owner" — defaults to "Joint"
     const result = await Item.updateMany(
       { owner: { $exists: false } },
-      { $set: { owner: "Owen" } } // default to Joint
+      { $set: { owner: "Joint" } },
     );
-
     console.log(`Updated ${result.modifiedCount} items.`);
   } catch (err) {
     console.error(err);
