@@ -6,7 +6,92 @@ import { stringify } from "csv-stringify";
 
 const router = express.Router();
 
-// ================== TRANSACTIONS ==================
+// ================== SESSION SUMMARY ==================
+// Returns JSON summary for the export page UI
+router.get("/summary", async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res
+        .status(400)
+        .json({ error: "startDate and endDate are required" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Sold items in range
+    const soldItems = await Item.find({
+      soldDate: { $gte: start, $lte: end },
+      soldPrice: { $ne: null },
+    }).lean();
+
+    // Other profits in range
+    const otherEntries = await Other.find({
+      date: { $gte: start, $lte: end },
+    }).lean();
+
+    // Build per-item rows
+    const itemRows = soldItems.map((item) => ({
+      name: item.name,
+      itemType: item.itemType,
+      owner: item.owner || "",
+      purchasePrice: Number(item.purchasePrice) || 0,
+      soldPrice: Number(item.soldPrice) || 0,
+      profit: (Number(item.soldPrice) || 0) - (Number(item.purchasePrice) || 0),
+      paymentMethod: item.paymentMethod || "Cash",
+      soldDate: item.soldDate
+        ? new Date(item.soldDate).toISOString().split("T")[0]
+        : "",
+    }));
+
+    const otherRows = otherEntries.map((o) => ({
+      name: o.name,
+      amount: Number(o.amount) || 0,
+      date: o.date ? new Date(o.date).toISOString().split("T")[0] : "",
+      notes: o.notes || "",
+    }));
+
+    // Totals
+    const totalMoneyIn =
+      itemRows.reduce((s, r) => s + r.soldPrice, 0) +
+      otherRows.reduce((s, r) => s + r.amount, 0);
+
+    const totalProfit =
+      itemRows.reduce((s, r) => s + r.profit, 0) +
+      otherRows.reduce((s, r) => s + r.amount, 0);
+
+    const digitalBen = itemRows
+      .filter((r) => r.paymentMethod === "Digital - Ben")
+      .reduce((s, r) => s + r.soldPrice, 0);
+
+    const digitalOwen = itemRows
+      .filter((r) => r.paymentMethod === "Digital - Owen")
+      .reduce((s, r) => s + r.soldPrice, 0);
+
+    const totalDigital = digitalBen + digitalOwen;
+    const totalCash = totalMoneyIn - totalDigital;
+
+    res.json({
+      totalMoneyIn,
+      totalProfit,
+      totalCash,
+      totalDigital,
+      digitalBen,
+      digitalOwen,
+      itemCount: itemRows.length,
+      otherCount: otherRows.length,
+      items: itemRows,
+      other: otherRows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate summary" });
+  }
+});
+
+// ================== TRANSACTIONS CSV ==================
 router.get("/transactions", async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -20,7 +105,6 @@ router.get("/transactions", async (req, res) => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    // Sales in range
     const soldItems = await Item.find({
       soldDate: { $gte: start, $lte: end },
     }).lean();
@@ -36,7 +120,6 @@ router.get("/transactions", async (req, res) => {
       transactionType: "sale",
     }));
 
-    // Purchases in range
     const purchasedItems = await Item.find({
       purchaseDate: { $gte: start, $lte: end },
     }).lean();
@@ -65,6 +148,7 @@ router.get("/transactions", async (req, res) => {
       "purchaseDate",
       "soldPrice",
       "soldDate",
+      "paymentMethod",
       "owner",
       "notes",
       "itemType",
@@ -88,7 +172,7 @@ router.get("/transactions", async (req, res) => {
   }
 });
 
-// ================== EXPENSES ==================
+// ================== EXPENSES CSV ==================
 router.get("/expenses", async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -128,7 +212,7 @@ router.get("/expenses", async (req, res) => {
   }
 });
 
-// ================== OTHER ==================
+// ================== OTHER CSV ==================
 router.get("/other", async (req, res) => {
   try {
     const { startDate, endDate } = req.query;

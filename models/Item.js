@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const options = { discriminatorKey: "itemType", timestamps: true };
 
-// Base Item Schema
 const ItemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -10,6 +9,11 @@ const ItemSchema = new mongoose.Schema(
     purchaseDate: { type: Date, default: null },
     soldPrice: { type: Number, default: null },
     soldDate: { type: Date, default: null },
+    paymentMethod: {
+      type: String,
+      enum: ["Cash", "Digital - Ben", "Digital - Owen", null],
+      default: null,
+    },
     notes: { type: String, default: "", trim: true },
     owner: {
       type: String,
@@ -23,7 +27,6 @@ const ItemSchema = new mongoose.Schema(
 
 const Item = mongoose.model("Item", ItemSchema);
 
-// Card
 const Card = Item.discriminator(
   "Card",
   new mongoose.Schema(
@@ -40,8 +43,6 @@ const Card = Item.discriminator(
   ),
 );
 
-// Slab — company is a free-text field (uppercased before save), not an enum,
-// so PSA, BGS, CGC, TAG, SGC, etc. all work without schema changes.
 const Slab = Item.discriminator(
   "Slab",
   new mongoose.Schema(
@@ -55,7 +56,6 @@ const Slab = Item.discriminator(
   ),
 );
 
-// Sealed — no extra fields beyond base
 const Sealed = Item.discriminator("Sealed", new mongoose.Schema({}, options));
 
 export { Item, Card, Slab, Sealed };
