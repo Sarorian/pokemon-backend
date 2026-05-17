@@ -44,6 +44,7 @@ router.get("/summary", async (req, res) => {
       soldDate: item.soldDate
         ? new Date(item.soldDate).toISOString().split("T")[0]
         : "",
+      notes: item.notes || "",
     }));
 
     const otherRows = otherEntries.map((o) => ({
