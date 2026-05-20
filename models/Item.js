@@ -14,6 +14,15 @@ const ItemSchema = new mongoose.Schema(
       enum: ["Cash", "Digital - Ben", "Digital - Owen", null],
       default: null,
     },
+    soldAtShow: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Show",
+      default: null,
+    },
+    sourcedFrom: {
+      type: String,
+      default: null,
+    },
     notes: { type: String, default: "", trim: true },
     owner: {
       type: String,
