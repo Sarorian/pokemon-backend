@@ -6,6 +6,7 @@ import expenseRoutes from "./routes/expenseRoutes.js";
 import otherRoutes from "./routes/otherRoutes.js";
 import exportRoutes from "./routes/export.js";
 import showRoutes from "./routes/showRoutes.js";
+import binderConfigRoutes from "./routes/binderConfigRoutes.js";
 import "dotenv/config";
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/other", otherRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/shows", showRoutes);
+app.use("/api/binder-config", binderConfigRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
